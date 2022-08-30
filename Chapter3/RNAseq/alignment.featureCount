@@ -1,0 +1,149 @@
+## This script contains the steps to align the reads to the reference genome
+
+## activte the conda environment
+conda activate bioinfo
+
+# Switch to the directory 
+cd work/big
+
+# download the reference genome --> https://angus.readthedocs.io/en/2016/arabidopsis_assembly_challenge.html
+wget https://www.arabidopsis.org/download_files/Genes/TAIR10_genome_release/TAIR10_chromosome_files/TAIR10_chr_all.fas
+
+
+### downloaded a different annotation from plant.ensemble
+
+# the chromosome names in the fasta file don't match the ones in the annotation file.
+# this seems to be a huge issu for featureCounts.
+# change chromosome names in the fasta file to the ons of the annotation file
+
+
+sed -i 's/>mitochondria/>Mt/' TAIR10_chr_all.fas
+sed -i 's/>chloroplast/>Pt/' TAIR10_chr_all.fas
+
+
+# run statistics on reference and reads
+seqkit stats ref/*.fas
+
+seqkit stats creads/*.fq
+
+# generate a file with the root names
+parallel -j 1 echo {1}_{2} ::: MOCK PST ::: 1 2 3 > ids_PST
+parallel -j 1 echo {1}_{2} ::: MOCK WILLI ::: 1 2 3 > ids_WILLI
+parallel -j 1 echo {1}_{2} ::: MOCK MICRO ::: 1 2 3 > ids_MICRO
+
+
+# index the reference genome
+IDX=ref/TAIR10_chr_all.fas
+
+# build the genome index
+hisat2-build $IDX $IDX
+
+# index the reference genome with samtools
+samtools faidx $IDX
+
+# create a BAM folder for the alignments
+mkdir -p bam2
+
+# align the fastq files to the reference genome
+cat ids_PST | parallel "hisat2 -x $IDX -1 creads/{}_R1.fq -2 creads/{}_R2.fq | samtools sort > bam2/{}.bam"
+cat ids_WILLI | parallel "hisat2 -x $IDX -1 creads/{}_R1.fq -2 creads/{}_R2.fq | samtools sort > bam2/{}.bam"
+cat ids_MICRO | parallel "hisat2 -x $IDX -1 creads/{}_R1.fq -2 creads/{}_R2.fq | samtools sort > bam2/{}.bam"
+
+# index each BAM file
+cat ids_PST | parallel "samtools index bam2/{}.bam"
+cat ids_WILLI | parallel "samtools index bam2/{}.bam"
+cat ids_MICRO | parallel "samtools index bam2/{}.bam"
+
+# run featureCounts on BAM files in the right order!
+featureCounts -p -a ref/Arabidopsis_thaliana.TAIR10.50.gtf -o counts_PST_a.txt bam2/MOCK_?.bam bam2/PST_?.bam
+featureCounts -p -a ref/Arabidopsis_thaliana.TAIR10.50.gtf -o counts_WILLI_a.txt bam2/MOCK_?.bam bam2/WILLI_?.bam
+featureCounts -p -a ref/Arabidopsis_thaliana.TAIR10.50.gtf -o counts_MICRO_a.txt bam2/MOCK_?.bam bam2/MICRO_?.bam
+
+################################################
+### visualize annotation in IGV (genome browser)
+################################################
+
+# converting bam into bigwig files via conversion to bedgraph files --> those are for visualisation in IGV
+conda install -y ucsc-bedgraphtobigwig
+cat ids | parallel "bedtools genomecov -ibam bam2/{}.bam -split -bg > bam2/{}.bg"
+cat ids | parallel "bedGraphToBigWig bam2/{}.bg ${IDX}.fai bam2/{}.bw"
+
+###############################
+### The differential expression
+###############################
+
+# Activate the environment for stats
+conda activate stats
+
+# perform differential analysis with deseq2
+cat counts_PST_a.txt | deseq2.r 3x3 > deseq2-results_PST_a.csv
+cat counts_WILLI_a.txt | deseq2.r 3x3 > deseq2-results_WILLI_a.csv
+cat counts_MICRO_a.txt | deseq2.r 3x3 > deseq2-results_MICRO_a.csv
+
+# perform differential analysis with edgeR
+cat counts_PST_a.txt | edger.r 3x3 > edger-results_PST_a.csv
+cat counts_WILLI_a.txt | edger.r 3x3 > edger-results_WILLI_a.csv
+cat counts_MICRO_a.txt | edger.r 3x3 > edger-results_MICRO_a.csv
+
+##########################
+###Visualizing the results
+##########################
+
+# create a heatmap
+cat deseq2-results_PST_a.csv | heatmap.r > deseq2-heatmap_PST_a.pdf
+cat deseq2-results_WILLI_a.csv | heatmap.r > deseq2-heatmap_WILLI_a.pdf
+cat deseq2-results_MICRO_a.csv | heatmap.r > deseq2-heatmap_MICRO_a.pdf
+
+cat edger-results_PST_a.csv | heatmap.r > edger-heatmap_PST_a.pdf
+cat edger-results_WILLI_a.csv | heatmap.r > edger-heatmap_WILLI_a.pdf
+cat edger-results_MICRO_a.csv | heatmap.r > edger-heatmap_MICRO_a.pdf
+
+#################################################################################
+# Get the data analysis scripts.
+wget -P code -qnc  http://data.biostarhandbook.com/books/rnaseq/code/deseq2.r
+wget -P code -qnc  http://data.biostarhandbook.com/books/rnaseq/code/edger.r
+wget -P code -qnc  http://data.biostarhandbook.com/books/rnaseq/code/heatmap.r
+
+
+
+##################################################################################
+######## alignment based RNAseq all data combined ################################
+
+## activte the conda environment
+conda activate bioinfo
+
+# Switch to the directory 
+cd work/big
+
+# generate a file with the root names
+parallel -j 1 echo {1}_{2} ::: MOCK PST WILLI MICRO ::: 1 2 3 > ids
+
+# index the reference genome
+IDX=ref/TAIR10_chr_all.fas
+
+# build the genome index
+hisat2-build $IDX $IDX
+
+# index the reference genome with samtools
+samtools faidx $IDX
+
+# create a BAM folder for the alignments
+mkdir -p bam3
+
+# align the fastq files to the reference genome
+cat ids | parallel "hisat2 -x $IDX -1 creads/{}_R1.fq -2 creads/{}_R2.fq | samtools sort > bam3/{}.bam"
+
+# index each BAM file
+cat ids | parallel "samtools index bam3/{}.bam"
+
+# run featureCounts on BAM files in the right order!
+featureCounts -p -a ref/Arabidopsis_thaliana.TAIR10.50.gtf -o counts_a.txt bam3/MOCK_?.bam bam3/PST_?.bam bam3/WILLI_?.bam bam3/MICRO_?.bam
+
+# Activate the environment for stats
+conda activate stats
+
+# perform differential analysis with edgeR
+cat counts_a.txt | edger.r 3x3x3x3 > edger-results_a.csv # does not work. would have been too easy
+
+# create a heatmap
+cat edger-results_a.csv | heatmap.r > edger-heatmap_a.pdf
