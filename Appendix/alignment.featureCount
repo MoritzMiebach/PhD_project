@@ -1,0 +1,220 @@
+## This script contains the steps to align the reads to the reference genome
+
+## activte the conda environment
+conda activate bioinfo
+
+# Switch to the directory 
+cd bioinfo
+cd RNAseqAC.creads
+
+# download the reference genome --> https://angus.readthedocs.io/en/2016/arabidopsis_assembly_challenge.html
+
+wget https://www.arabidopsis.org/download_files/Genes/TAIR10_genome_release/TAIR10_chromosome_files/TAIR10_chr_all.fas
+
+
+### downloaded a different annotation from plant.ensemble
+
+# the chromosome names in the fasta file don't match the ones in the annotation file.
+# this seems to be a huge issue for featureCounts.
+# change chromosome names in the fasta file to the ons of the annotation file
+
+
+sed -i 's/>mitochondria/>Mt/' TAIR10_chr_all.fas
+sed -i 's/>chloroplast/>Pt/' TAIR10_chr_all.fas
+
+
+# run statistics on reference and reads
+seqkit stats *.fas
+
+seqkit stats *.fq
+
+# generate a file with the root names
+parallel -j 1 echo {1}_{2} ::: MOCKa AC229 ::: 1 2 3 > ids_AC229
+parallel -j 1 echo {1}_{2} ::: MOCKa AC266 ::: 1 2 3 > ids_AC266
+parallel -j 1 echo {1}_{2} ::: MOCKa AC464 ::: 1 2 3 > ids_AC464
+parallel -j 1 echo {1}_{2} ::: MOCKa AC754 ::: 1 2 3 > ids_AC754
+parallel -j 1 echo {1}_{2} ::: MOCKa AC759 ::: 1 2 3 > ids_AC759
+parallel -j 1 echo {1}_{2} ::: MOCKa AC761 ::: 1 2 3 > ids_AC761
+
+parallel -j 1 echo {1}_{2} ::: MOCKb AC103 ::: 1 2 3 > ids_AC103
+parallel -j 1 echo {1}_{2} ::: MOCKb AC248 ::: 1 2 3 > ids_AC248
+parallel -j 1 echo {1}_{2} ::: MOCKb AC433 ::: 1 2 3 > ids_AC433
+parallel -j 1 echo {1}_{2} ::: MOCKb AC435 ::: 1 2 3 > ids_AC435
+parallel -j 1 echo {1}_{2} ::: MOCKb AC561 ::: 1 2 3 > ids_AC561
+parallel -j 1 echo {1}_{2} ::: MOCKb AC854 ::: 1 2 3 > ids_AC854
+
+parallel -j 1 echo {1}_{2} ::: MOCKc AC221 ::: 1 2 3 > ids_AC221
+parallel -j 1 echo {1}_{2} ::: MOCKc AC286 ::: 1 2 3 > ids_AC286
+parallel -j 1 echo {1}_{2} ::: MOCKc AC463 ::: 1 2 3 > ids_AC463
+parallel -j 1 echo {1}_{2} ::: MOCKc AC507 ::: 1 2 3 > ids_AC507
+parallel -j 1 echo {1}_{2} ::: MOCKc AC832 ::: 1 2 3 > ids_AC832
+parallel -j 1 echo {1}_{2} ::: MOCKc AC861 ::: 1 2 3 > ids_AC861
+
+
+# index the reference genome
+IDX=TAIR10_chr_all.fas
+
+# build the genome index
+hisat2-build $IDX $IDX
+
+# index the reference genome with samtools
+samtools faidx $IDX
+
+# create a BAM folder for the alignments
+mkdir -p bam
+
+# align the fastq files to the reference genome
+cat ids_AC229 | parallel "hisat2 -x $IDX -1 {}_R1.fq -2 {}_R2.fq | samtools sort > bam/{}.bam"
+cat ids_AC266 | parallel "hisat2 -x $IDX -1 {}_R1.fq -2 {}_R2.fq | samtools sort > bam/{}.bam"
+cat ids_AC464 | parallel "hisat2 -x $IDX -1 {}_R1.fq -2 {}_R2.fq | samtools sort > bam/{}.bam"
+cat ids_AC754 | parallel "hisat2 -x $IDX -1 {}_R1.fq -2 {}_R2.fq | samtools sort > bam/{}.bam"
+cat ids_AC759 | parallel "hisat2 -x $IDX -1 {}_R1.fq -2 {}_R2.fq | samtools sort > bam/{}.bam"
+cat ids_AC761 | parallel "hisat2 -x $IDX -1 {}_R1.fq -2 {}_R2.fq | samtools sort > bam/{}.bam"
+
+cat ids_AC103 | parallel "hisat2 -x $IDX -1 {}_R1.fq -2 {}_R2.fq | samtools sort > bam/{}.bam"
+cat ids_AC248 | parallel "hisat2 -x $IDX -1 {}_R1.fq -2 {}_R2.fq | samtools sort > bam/{}.bam"
+cat ids_AC433 | parallel "hisat2 -x $IDX -1 {}_R1.fq -2 {}_R2.fq | samtools sort > bam/{}.bam"
+cat ids_AC435 | parallel "hisat2 -x $IDX -1 {}_R1.fq -2 {}_R2.fq | samtools sort > bam/{}.bam"
+cat ids_AC561 | parallel "hisat2 -x $IDX -1 {}_R1.fq -2 {}_R2.fq | samtools sort > bam/{}.bam"
+cat ids_AC854 | parallel "hisat2 -x $IDX -1 {}_R1.fq -2 {}_R2.fq | samtools sort > bam/{}.bam"
+
+cat ids_AC221 | parallel "hisat2 -x $IDX -1 {}_R1.fq -2 {}_R2.fq | samtools sort > bam/{}.bam"
+cat ids_AC286 | parallel "hisat2 -x $IDX -1 {}_R1.fq -2 {}_R2.fq | samtools sort > bam/{}.bam"
+cat ids_AC463 | parallel "hisat2 -x $IDX -1 {}_R1.fq -2 {}_R2.fq | samtools sort > bam/{}.bam"
+cat ids_AC507 | parallel "hisat2 -x $IDX -1 {}_R1.fq -2 {}_R2.fq | samtools sort > bam/{}.bam"
+cat ids_AC832 | parallel "hisat2 -x $IDX -1 {}_R1.fq -2 {}_R2.fq | samtools sort > bam/{}.bam"
+cat ids_AC861 | parallel "hisat2 -x $IDX -1 {}_R1.fq -2 {}_R2.fq | samtools sort > bam/{}.bam"
+
+# index each BAM file
+cat ids_AC229 | parallel "samtools index bam/{}.bam"
+cat ids_AC266 | parallel "samtools index bam/{}.bam"
+cat ids_AC464 | parallel "samtools index bam/{}.bam"
+cat ids_AC754 | parallel "samtools index bam/{}.bam"
+cat ids_AC759 | parallel "samtools index bam/{}.bam"
+cat ids_AC761 | parallel "samtools index bam/{}.bam"
+
+cat ids_AC103 | parallel "samtools index bam/{}.bam"
+cat ids_AC248 | parallel "samtools index bam/{}.bam"
+cat ids_AC433 | parallel "samtools index bam/{}.bam"
+cat ids_AC435 | parallel "samtools index bam/{}.bam"
+cat ids_AC561 | parallel "samtools index bam/{}.bam"
+cat ids_AC854 | parallel "samtools index bam/{}.bam"
+
+cat ids_AC221 | parallel "samtools index bam/{}.bam"
+cat ids_AC286 | parallel "samtools index bam/{}.bam"
+cat ids_AC463 | parallel "samtools index bam/{}.bam"
+cat ids_AC507 | parallel "samtools index bam/{}.bam"
+cat ids_AC832 | parallel "samtools index bam/{}.bam"
+cat ids_AC861 | parallel "samtools index bam/{}.bam"
+
+
+# run featureCounts on BAM files in the right order!
+featureCounts -p -a Arabidopsis_thaliana.TAIR10.50.gtf -o counts_AC229_a.txt bam/MOCKa_?.bam bam/AC229_?.bam
+featureCounts -p -a Arabidopsis_thaliana.TAIR10.50.gtf -o counts_AC266_a.txt bam/MOCKa_?.bam bam/AC266_?.bam
+featureCounts -p -a Arabidopsis_thaliana.TAIR10.50.gtf -o counts_AC464_a.txt bam/MOCKa_?.bam bam/AC464_?.bam
+featureCounts -p -a Arabidopsis_thaliana.TAIR10.50.gtf -o counts_AC754_a.txt bam/MOCKa_?.bam bam/AC754_?.bam
+featureCounts -p -a Arabidopsis_thaliana.TAIR10.50.gtf -o counts_AC759_a.txt bam/MOCKa_?.bam bam/AC759_?.bam
+featureCounts -p -a Arabidopsis_thaliana.TAIR10.50.gtf -o counts_AC761_a.txt bam/MOCKa_?.bam bam/AC761_?.bam
+
+featureCounts -p -a Arabidopsis_thaliana.TAIR10.50.gtf -o counts_AC103_a.txt bam/MOCKb_?.bam bam/AC103_?.bam
+featureCounts -p -a Arabidopsis_thaliana.TAIR10.50.gtf -o counts_AC248_a.txt bam/MOCKb_?.bam bam/AC248_?.bam
+featureCounts -p -a Arabidopsis_thaliana.TAIR10.50.gtf -o counts_AC433_a.txt bam/MOCKb_?.bam bam/AC433_?.bam
+featureCounts -p -a Arabidopsis_thaliana.TAIR10.50.gtf -o counts_AC435_a.txt bam/MOCKb_?.bam bam/AC435_?.bam
+featureCounts -p -a Arabidopsis_thaliana.TAIR10.50.gtf -o counts_AC561_a.txt bam/MOCKb_?.bam bam/AC561_?.bam
+featureCounts -p -a Arabidopsis_thaliana.TAIR10.50.gtf -o counts_AC854_a.txt bam/MOCKb_?.bam bam/AC854_?.bam
+
+featureCounts -p -a Arabidopsis_thaliana.TAIR10.50.gtf -o counts_AC221_a.txt bam/MOCKc_?.bam bam/AC221_?.bam
+featureCounts -p -a Arabidopsis_thaliana.TAIR10.50.gtf -o counts_AC286_a.txt bam/MOCKc_?.bam bam/AC286_?.bam
+featureCounts -p -a Arabidopsis_thaliana.TAIR10.50.gtf -o counts_AC463_a.txt bam/MOCKc_?.bam bam/AC463_?.bam
+featureCounts -p -a Arabidopsis_thaliana.TAIR10.50.gtf -o counts_AC507_a.txt bam/MOCKc_?.bam bam/AC507_?.bam
+featureCounts -p -a Arabidopsis_thaliana.TAIR10.50.gtf -o counts_AC832_a.txt bam/MOCKc_?.bam bam/AC832_?.bam
+featureCounts -p -a Arabidopsis_thaliana.TAIR10.50.gtf -o counts_AC861_a.txt bam/MOCKc_?.bam bam/AC861_?.bam
+
+################################################
+### visualize annotation in IGV (genome browser)
+################################################
+
+# converting bam into bigwig files via conversion to bedgraph files --> those are for visualisation in IGV
+conda install -y ucsc-bedgraphtobigwig
+cat ids | parallel "bedtools genomecov -ibam bam2/{}.bam -split -bg > bam2/{}.bg"
+cat ids | parallel "bedGraphToBigWig bam2/{}.bg ${IDX}.fai bam2/{}.bw"
+
+###############################
+### The differential expression
+###############################
+
+# Activate the environment for stats
+conda activate stats
+
+# perform differential analysis with deseq2
+cat counts_PST_a.txt | deseq2.r 3x3 > deseq2-results_PST_a.csv
+cat counts_WILLI_a.txt | deseq2.r 3x3 > deseq2-results_WILLI_a.csv
+cat counts_MICRO_a.txt | deseq2.r 3x3 > deseq2-results_MICRO_a.csv
+
+# perform differential analysis with edgeR
+cat counts_PST_a.txt | edger.r 3x3 > edger-results_PST_a.csv
+cat counts_WILLI_a.txt | edger.r 3x3 > edger-results_WILLI_a.csv
+cat counts_MICRO_a.txt | edger.r 3x3 > edger-results_MICRO_a.csv
+
+##########################
+###Visualizing the results
+##########################
+
+# create a heatmap
+cat deseq2-results_PST_a.csv | heatmap.r > deseq2-heatmap_PST_a.pdf
+cat deseq2-results_WILLI_a.csv | heatmap.r > deseq2-heatmap_WILLI_a.pdf
+cat deseq2-results_MICRO_a.csv | heatmap.r > deseq2-heatmap_MICRO_a.pdf
+
+cat edger-results_PST_a.csv | heatmap.r > edger-heatmap_PST_a.pdf
+cat edger-results_WILLI_a.csv | heatmap.r > edger-heatmap_WILLI_a.pdf
+cat edger-results_MICRO_a.csv | heatmap.r > edger-heatmap_MICRO_a.pdf
+
+#################################################################################
+# Get the data analysis scripts.
+wget -P code -qnc  http://data.biostarhandbook.com/books/rnaseq/code/deseq2.r
+wget -P code -qnc  http://data.biostarhandbook.com/books/rnaseq/code/edger.r
+wget -P code -qnc  http://data.biostarhandbook.com/books/rnaseq/code/heatmap.r
+
+
+
+##################################################################################
+######## alignment based RNAseq all data combined ################################
+
+## activte the conda environment
+conda activate bioinfo
+
+# Switch to the directory 
+cd work/big
+
+# generate a file with the root names
+parallel -j 1 echo {1}_{2} ::: MOCK PST WILLI MICRO ::: 1 2 3 > ids
+
+# index the reference genome
+IDX=ref/TAIR10_chr_all.fas
+
+# build the genome index
+hisat2-build $IDX $IDX
+
+# index the reference genome with samtools
+samtools faidx $IDX
+
+# create a BAM folder for the alignments
+mkdir -p bam_w
+
+# align the fastq files to the reference genome
+cat ids | parallel "hisat2 -x $IDX -1 creads/{}_R1.fq -2 creads/{}_R2.fq | samtools sort > bam_w/{}.bam"
+
+# index each BAM file
+cat ids | parallel "samtools index bam_w/{}.bam"
+
+# run featureCounts on BAM files in the right order!
+featureCounts -p -a ref/Arabidopsis_thaliana.TAIR10.50.gtf -o counts_a.txt bam_w/MOCK_?.bam bam_w/PST_?.bam bam_w/WILLI_?.bam bam_w/MICRO_?.bam
+
+# Activate the environment for stats
+conda activate stats
+
+# perform differential analysis with edgeR
+cat counts_a.txt | edger.r 3x3x3x3 > edger-results_a.csv # does not work. would have been too easy
+
+# create a heatmap
+cat edger-results_a.csv | heatmap.r > edger-heatmap_a.pdf
