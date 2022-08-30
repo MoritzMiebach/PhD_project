@@ -1,4 +1,4 @@
-#### Big timecourse experiment clean script
+#### Timecourse experiment
 
 ### This file is to calculate relative expression values from qPCR runs.
 ## Cq value is the 2nd derivative of the amplification curve.
